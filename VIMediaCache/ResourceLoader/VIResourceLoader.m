@@ -49,14 +49,10 @@ NSString * const MCResourceLoaderErrorDomain = @"LSFilePlayerResourceLoaderError
 }
 
 - (void)addRequest:(AVAssetResourceLoadingRequest *)request {
-    if (self.pendingRequestWorkers.count > 0) {
-        [self startNoCacheWorkerWithRequest:request];
-    } else {
-        [self startWorkerWithRequest:request];
-    }
+    [self startWorkerWithRequest:request];
 }
 
-- (void)removeRequest:(AVAssetResourceLoadingRequest *)request {
+- (void)cancelRequest:(AVAssetResourceLoadingRequest *)request {
     __block VIResourceLoadingRequestWorker *requestWorker = nil;
     [self.pendingRequestWorkers enumerateObjectsUsingBlock:^(VIResourceLoadingRequestWorker *  _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
         if (obj.request == request) {
@@ -65,8 +61,7 @@ NSString * const MCResourceLoaderErrorDomain = @"LSFilePlayerResourceLoaderError
         }
     }];
     if (requestWorker) {
-        [requestWorker finish];
-        [self.pendingRequestWorkers removeObject:requestWorker];
+        [requestWorker cancel];
     }
 }
 
@@ -80,12 +75,15 @@ NSString * const MCResourceLoaderErrorDomain = @"LSFilePlayerResourceLoaderError
 #pragma mark - VIResourceLoadingRequestWorkerDelegate
 
 - (void)resourceLoadingRequestWorker:(VIResourceLoadingRequestWorker *)requestWorker didCompleteWithError:(NSError *)error {
-    [self removeRequest:requestWorker.request];
-    if (error && [self.delegate respondsToSelector:@selector(resourceLoader:didFailWithError:)]) {
-        [self.delegate resourceLoader:self didFailWithError:error];
-    }
+    [self.pendingRequestWorkers removeObject:requestWorker];
     if (self.pendingRequestWorkers.count == 0) {
         [[VIMediaDownloaderStatus shared] removeURL:self.url];
+    }else{
+        [self.pendingRequestWorkers.firstObject startWork];
+    }
+    
+    if (error && [self.delegate respondsToSelector:@selector(resourceLoader:didFailWithError:)]) {
+        [self.delegate resourceLoader:self didFailWithError:error];
     }
 }
 
@@ -106,9 +104,11 @@ NSString * const MCResourceLoaderErrorDomain = @"LSFilePlayerResourceLoaderError
     VIResourceLoadingRequestWorker *requestWorker = [[VIResourceLoadingRequestWorker alloc] initWithMediaDownloader:self.mediaDownloader
                                                                                              resourceLoadingRequest:request];
     [self.pendingRequestWorkers addObject:requestWorker];
+
     requestWorker.delegate = self;
-    [requestWorker startWork];
-    
+    if (self.pendingRequestWorkers.count == 1) {
+        [requestWorker startWork];
+    }
 }
 
 - (NSError *)loaderCancelledError {

@@ -43,7 +43,7 @@
     if (dataRequest.currentOffset != 0) {
         offset = dataRequest.currentOffset;
     }
-    
+
     BOOL toEnd = NO;
     if ([[UIDevice currentDevice].systemVersion floatValue] >= 9.0) {
         if (dataRequest.requestsAllDataToEndOfResource) {
@@ -59,7 +59,6 @@
 
 - (void)finish {
     if (!self.request.isFinished) {
-        [self.mediaDownloader cancel];
         [self.request finishLoadingWithError:[self loaderCancelledError]];
     }
 }
@@ -92,10 +91,6 @@
 }
 
 - (void)mediaDownloader:(VIMediaDownloader *)downloader didFinishedWithError:(NSError *)error {
-    if (error.code == NSURLErrorCancelled) {
-        return;
-    }
-    
     if (!error) {
         [self.request finishLoading];
     } else {

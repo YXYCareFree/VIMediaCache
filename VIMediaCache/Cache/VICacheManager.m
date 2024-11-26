@@ -18,7 +18,6 @@ NSString *VICacheFinishedErrorKey = @"VICacheFinishedErrorKey";
 
 static NSString *kMCMediaCacheDirectory;
 static NSTimeInterval kMCMediaCacheNotifyInterval;
-static NSString *(^kMCFileNameRules)(NSURL *url);
 
 @implementation VICacheManager
 
@@ -46,18 +45,9 @@ static NSString *(^kMCFileNameRules)(NSURL *url);
     return kMCMediaCacheNotifyInterval;
 }
 
-+ (void)setFileNameRules:(NSString *(^)(NSURL *url))rules {
-    kMCFileNameRules = rules;
-}
-
 + (NSString *)cachedFilePathForURL:(NSURL *)url {
-    NSString *pathComponent = nil;
-    if (kMCFileNameRules) {
-        pathComponent = kMCFileNameRules(url);
-    } else {
-        pathComponent = [url.absoluteString vi_md5];
-        pathComponent = [pathComponent stringByAppendingPathExtension:url.pathExtension];
-    }
+    NSString *pathComponent = [url.absoluteString vi_md5];
+    pathComponent = [pathComponent stringByAppendingPathExtension:url.pathExtension];
     return [[self cacheDirectory] stringByAppendingPathComponent:pathComponent];
 }
 

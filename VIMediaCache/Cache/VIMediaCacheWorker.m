@@ -12,7 +12,7 @@
 
 @import UIKit;
 
-static NSInteger const kPackageLength = 512 * 1024; // 512 kb per package
+static NSInteger const kPackageLength = 204800; // 200kb per package
 static NSString *kMCMediaCacheResponseKey = @"kMCMediaCacheResponseKey";
 static NSString *VIMediaCacheErrorDoamin = @"com.vimediacache";
 
@@ -107,9 +107,10 @@ static NSString *VIMediaCacheErrorDoamin = @"com.vimediacache";
 }
 
 - (NSArray<VICacheAction *> *)cachedDataActionsForRange:(NSRange)range {
+
     NSArray *cachedFragments = [self.internalCacheConfiguration cacheFragments];
     NSMutableArray *actions = [NSMutableArray array];
-    
+
     if (range.location == NSNotFound) {
         return [actions copy];
     }
@@ -180,7 +181,6 @@ static NSString *VIMediaCacheErrorDoamin = @"com.vimediacache";
         
         actions = localRemoteActions;
     }
-    
     return [actions copy];
 }
 

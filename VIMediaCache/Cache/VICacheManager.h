@@ -32,8 +32,6 @@ extern NSString *VICacheFinishedErrorKey;
 + (NSString *)cachedFilePathForURL:(NSURL *)url;
 + (VICacheConfiguration *)cacheConfigurationForURL:(NSURL *)url;
 
-+ (void)setFileNameRules:(NSString *(^)(NSURL *url))rules;
-
 
 /**
  Calculate cached files size

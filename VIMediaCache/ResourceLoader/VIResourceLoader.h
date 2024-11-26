@@ -18,7 +18,8 @@
 - (instancetype)initWithURL:(NSURL *)url;
 
 - (void)addRequest:(AVAssetResourceLoadingRequest *)request;
-- (void)removeRequest:(AVAssetResourceLoadingRequest *)request;
+
+- (void)cancelRequest:(AVAssetResourceLoadingRequest *)request;
 
 - (void)cancel;
 

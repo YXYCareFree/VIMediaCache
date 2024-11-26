@@ -85,6 +85,8 @@ didCompleteWithError:(nullable NSError *)error {
             [self.delegate URLSession:session dataTask:task didReceiveData:chunkData];
         }
     }
+    NSLog(@"xxx URLSession complete: %@  %@", error, self.delegate);
+    
     [self.delegate URLSession:session task:task didCompleteWithError:error];
 }
 
@@ -154,6 +156,7 @@ didCompleteWithError:(nullable NSError *)error {
 }
 
 - (void)cancel {
+
     if (_session) {
         [self.session invalidateAndCancel];
     }
@@ -182,10 +185,14 @@ didCompleteWithError:(nullable NSError *)error {
         return;
     }
     
-    VICacheAction *action = [self popFirstActionInList];
+    VICacheAction *action = [self.actions firstObject];
     if (!action) {
+        if ([self.delegate respondsToSelector:@selector(actionWorker:didFinishWithError:)]) {
+            [self.delegate actionWorker:self didFinishWithError:nil];
+        }
         return;
     }
+    [self.actions removeObjectAtIndex:0];
     
     if (action.actionType == VICacheAtionTypeLocal) {
         NSError *error;
@@ -198,7 +205,7 @@ didCompleteWithError:(nullable NSError *)error {
             if ([self.delegate respondsToSelector:@selector(actionWorker:didReceiveData:isLocal:)]) {
                 [self.delegate actionWorker:self didReceiveData:data isLocal:YES];
             }
-            [self processActionsLater];
+            [self processActions];
         }
     } else {
         long long fromOffset = action.range.location;
@@ -210,33 +217,10 @@ didCompleteWithError:(nullable NSError *)error {
         self.startOffset = action.range.location;
         self.task = [self.session dataTaskWithRequest:request];
         [self.task resume];
+        
+        NSLog(@"xxx download  %@  %@  %@", NSStringFromRange(action.range), self, self.session);
     }
 }
-
-// process data recursively,
-- (void)processActionsLater {
-    __weak typeof(self) weakSelf = self;
-    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-        __strong typeof(self) self = weakSelf;
-        [self processActions];
-    });
-}
-
-- (VICacheAction *)popFirstActionInList {
-    @synchronized (self) {
-        VICacheAction *action = [self.actions firstObject];
-        if (action) {
-            [self.actions removeObjectAtIndex:0];
-            return action;
-        }
-    }
-    if ([self.delegate respondsToSelector:@selector(actionWorker:didFinishWithError:)]) {
-        [self.delegate actionWorker:self didFinishWithError:nil];
-    }
-    return nil;
-}
-
-#pragma mark - Notify
 
 - (void)notifyDownloadProgressWithFlush:(BOOL)flush finished:(BOOL)finished {
     double currentTime = CFAbsoluteTimeGetCurrent();
@@ -432,8 +416,8 @@ didCompleteWithError:(nullable NSError *)error {
     }
     
     NSArray *actions = [self.cacheWorker cachedDataActionsForRange:range];
-
     self.actionWorker = [[VIActionWorker alloc] initWithActions:actions url:self.url cacheWorker:self.cacheWorker];
+
     self.actionWorker.canSaveToCache = self.saveToCache;
     self.actionWorker.delegate = self;
     [self.actionWorker start];
@@ -452,10 +436,10 @@ didCompleteWithError:(nullable NSError *)error {
 }
 
 - (void)cancel {
-    self.actionWorker.delegate = nil;
-    [[VIMediaDownloaderStatus shared] removeURL:self.url];
+//    self.actionWorker.delegate = nil;
+//    [[VIMediaDownloaderStatus shared] removeURL:self.url];
     [self.actionWorker cancel];
-    self.actionWorker = nil;
+//    self.actionWorker = nil;
 }
 
 #pragma mark - VIActionWorkerDelegate
@@ -498,7 +482,7 @@ didCompleteWithError:(nullable NSError *)error {
 
 - (void)actionWorker:(VIActionWorker *)actionWorker didFinishWithError:(NSError *)error {
     [[VIMediaDownloaderStatus shared] removeURL:self.url];
-    
+
     if (!error && self.downloadToEnd) {
         self.downloadToEnd = NO;
         [self downloadTaskFromOffset:2 length:(NSUInteger)(self.cacheWorker.cacheConfiguration.contentInfo.contentLength - 2) toEnd:YES];
